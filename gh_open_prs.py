@@ -289,9 +289,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="List open PRs for a GitHub organization.")
     parser.add_argument("org", help="GitHub organization name")
     parser.add_argument("--output", choices=["html"], help="Output format (default: table)")
+    parser.add_argument("--ignore", help="Comma-separated list of repo names to ignore")
     args = parser.parse_args()
 
+    ignore = set()
+    if args.ignore:
+        ignore = {name.strip() for name in args.ignore.split(",")}
+
     prs = fetch_open_prs(token, args.org)
+    prs = [pr for pr in prs if pr["repo"] not in ignore]
 
     if args.output == "html":
         filename = f"{args.org}_open_prs.html"
