@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
+#     "python-dotenv",
 #     "requests",
 # ]
 # ///
@@ -18,6 +19,8 @@ Environment variables:
 
 import os
 import sys
+
+from dotenv import load_dotenv
 import requests
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
@@ -112,6 +115,7 @@ def print_table(prs: list[dict]) -> None:
 
 
 def main() -> None:
+    load_dotenv()
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         print("Error: GITHUB_TOKEN environment variable is required.", file=sys.stderr)
