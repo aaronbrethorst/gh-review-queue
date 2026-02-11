@@ -20,6 +20,7 @@ Environment variables:
 
 import argparse
 import html
+import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -287,22 +288,35 @@ def main() -> None:
         sys.exit(1)
 
     parser = argparse.ArgumentParser(description="List open PRs for a GitHub organization.")
-    parser.add_argument("org", help="GitHub organization name")
+    parser.add_argument("org", nargs="?", help="GitHub organization name")
+    parser.add_argument("--config", help="Path to JSON config file")
     parser.add_argument("--output", choices=["html"], help="Output format (default: table)")
     parser.add_argument("--ignore", help="Comma-separated list of repo names to ignore")
     args = parser.parse_args()
 
-    ignore = set()
+    # Load config file as defaults, CLI args override
+    config = {}
+    if args.config:
+        with open(args.config) as f:
+            config = json.load(f)
+
+    org = args.org or config.get("org")
+    if not org:
+        parser.error("org is required (via argument or --config)")
+
+    output = args.output or config.get("output")
     if args.ignore:
         ignore = {name.strip() for name in args.ignore.split(",")}
+    else:
+        ignore = set(config.get("ignore", []))
 
-    prs = fetch_open_prs(token, args.org)
+    prs = fetch_open_prs(token, org)
     prs = [pr for pr in prs if pr["repo"] not in ignore]
 
-    if args.output == "html":
-        filename = f"{args.org}_open_prs.html"
+    if output == "html":
+        filename = f"{org}_open_prs.html"
         with open(filename, "w") as f:
-            f.write(render_html(prs, args.org))
+            f.write(render_html(prs, org))
         print(f"Wrote {filename}")
     else:
         print_table(prs)
