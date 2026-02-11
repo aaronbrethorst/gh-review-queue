@@ -20,16 +20,50 @@ Environment variables:
 
 import argparse
 import html
+import itertools
 import json
 import os
 import sys
 import tempfile
+import threading
+import time
 import webbrowser
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
 import requests
+
+_BRAILLE_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
+@contextmanager
+def spinner(message: str):
+    """Show a braille spinner with a message while work is in progress."""
+    done = threading.Event()
+
+    def _spin():
+        for frame in itertools.cycle(_BRAILLE_FRAMES):
+            if done.is_set():
+                break
+            print(f"\r{frame} {message}", end="", flush=True, file=sys.stderr)
+            time.sleep(0.08)
+
+    t = threading.Thread(target=_spin, daemon=True)
+    t.start()
+    try:
+        yield
+    finally:
+        done.set()
+        t.join()
+        print(f"\r\033[2K\r", end="", file=sys.stderr)
+
+
+def status(message: str):
+    """Print a completed-step status line."""
+    print(f"  {message}", file=sys.stderr)
+
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
 
@@ -395,19 +429,29 @@ def main() -> None:
     else:
         ignore = set(config.get("ignore", []))
 
-    prs = fetch_open_prs(token, org)
+    with spinner(f"Fetching open PRs for {org}…"):
+        prs = fetch_open_prs(token, org)
     prs = [pr for pr in prs if pr["repo"] not in ignore]
+    status(f"Found {len(prs)} open PR{'s' if len(prs) != 1 else ''}")
 
-    viewer = fetch_viewer_login(token)
-    for pr in prs:
-        pr["needs_attention"] = _needs_attention(pr, viewer)
-    prs.sort(key=lambda pr: (not pr["needs_attention"], pr["created_at"]))
+    with spinner("Identifying reviewer…"):
+        viewer = fetch_viewer_login(token)
+    status(f"Logged in as {viewer}")
+
+    with spinner("Sorting by review priority…"):
+        for pr in prs:
+            pr["needs_attention"] = _needs_attention(pr, viewer)
+        prs.sort(key=lambda pr: (not pr["needs_attention"], pr["created_at"]))
+    needs = sum(1 for pr in prs if pr["needs_attention"])
+    status(f"{needs} PR{'s' if needs != 1 else ''} need{'s' if needs == 1 else ''} your attention")
 
     open_browser = not args.no_open and config.get("open", True)
 
     if output == "html":
-        filepath = Path(tempfile.gettempdir()) / f"{org}_review_queue.html"
-        filepath.write_text(render_html(prs, org))
+        with spinner("Generating HTML report…"):
+            filepath = Path(tempfile.gettempdir()) / f"{org}_review_queue.html"
+            filepath.write_text(render_html(prs, org))
+        status(f"Report written to {filepath}")
         print(filepath)
         if open_browser:
             webbrowser.open(filepath.as_uri())
