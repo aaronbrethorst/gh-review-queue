@@ -11,8 +11,8 @@
 List all open pull requests for a GitHub organization.
 
 Usage:
-    GITHUB_TOKEN=ghp_xxx ./gh_open_prs.py OneBusAway
-    GITHUB_TOKEN=ghp_xxx ./gh_open_prs.py OneBusAway --output html
+    GITHUB_TOKEN=ghp_xxx ./gh_review_queue.py OneBusAway
+    GITHUB_TOKEN=ghp_xxx ./gh_review_queue.py OneBusAway --output html
 
 Environment variables:
     GITHUB_TOKEN - GitHub personal access token with repo scope
@@ -385,7 +385,7 @@ def main() -> None:
     prs.sort(key=lambda pr: (not pr["needs_attention"], pr["created_at"]))
 
     if output == "html":
-        filename = f"{org}_open_prs.html"
+        filename = f"{org}_review_queue.html"
         with open(filename, "w") as f:
             f.write(render_html(prs, org))
         print(f"Wrote {filename}")
