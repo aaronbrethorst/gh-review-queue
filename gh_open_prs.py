@@ -287,7 +287,7 @@ def render_html(prs: list[dict], org: str) -> str:
         counters_html = f'<div class="flex items-center gap-3">{" ".join(counters)}</div>' if counters else ""
 
         attention_cls = "border-l-4 border-l-blue-500" if pr.get("needs_attention") else "border-l-4 border-l-transparent"
-        rows += f"""      <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 {attention_cls}">
+        rows += f"""      <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 {attention_cls}" data-pr-url="{url}">
         <div class="{pr_color} mt-0.5">{_SVG_PR}</div>
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-x-1">
@@ -322,6 +322,25 @@ def render_html(prs: list[dict], org: str) -> str:
       <div class="bg-white rounded-lg shadow border border-gray-200">
 {rows}      </div>
     </div>
+    <script>
+      const KEY = "seen_prs";
+      const seen = new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+      function markSeen(row) {{
+        row.classList.remove("border-l-blue-500");
+        row.classList.add("border-l-transparent");
+      }}
+      document.querySelectorAll(".pr-row").forEach(row => {{
+        const url = row.dataset.prUrl;
+        if (seen.has(url)) markSeen(row);
+        row.querySelectorAll("a").forEach(a => {{
+          a.addEventListener("click", () => {{
+            seen.add(url);
+            localStorage.setItem(KEY, JSON.stringify([...seen]));
+            markSeen(row);
+          }});
+        }});
+      }});
+    </script>
   </body>
 </html>
 """
