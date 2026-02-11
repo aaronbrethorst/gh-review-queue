@@ -365,9 +365,16 @@ def main() -> None:
     args = parser.parse_args()
 
     # Load config file as defaults, CLI args override
+    config_path = args.config
+    if not config_path and not args.org:
+        default = Path(__file__).resolve().parent / "settings.json"
+        if not default.exists():
+            parser.error(f"No arguments given and {default} not found")
+        config_path = str(default)
+
     config = {}
-    if args.config:
-        with open(args.config) as f:
+    if config_path:
+        with open(config_path) as f:
             config = json.load(f)
 
     org = args.org or config.get("org")

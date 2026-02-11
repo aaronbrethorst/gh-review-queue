@@ -23,6 +23,9 @@ Lists all open pull requests for a GitHub organization, highlighting the PRs tha
 ### Usage
 
 ```
+# No arguments — automatically uses settings.json next to the script
+./gh_review_queue.py
+
 # Basic table output
 ./gh_review_queue.py OneBusAway
 
@@ -35,6 +38,8 @@ Lists all open pull requests for a GitHub organization, highlighting the PRs tha
 # Ignore specific repos
 ./gh_review_queue.py OneBusAway --ignore "repo-a, repo-b"
 ```
+
+When run with no arguments, the script looks for a `settings.json` file in the same directory as the script and uses it automatically.
 
 ### Options
 
