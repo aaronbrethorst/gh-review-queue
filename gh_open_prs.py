@@ -30,6 +30,8 @@ import requests
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
 
+VIEWER_QUERY = "{ viewer { login } }"
+
 QUERY = """
 query($org: String!, $cursor: String) {
   organization(login: $org) {
@@ -50,10 +52,12 @@ query($org: String!, $cursor: String) {
             author { login }
             labels(first: 10) { nodes { name color } }
             comments { totalCount }
-            reviews(first: 1) { totalCount }
+            reviewRequests(first: 10) { nodes { requestedReviewer { ... on User { login } } } }
+            reviews(last: 10) { totalCount nodes { author { login } createdAt } }
             commits(last: 1) {
               nodes {
                 commit {
+                  committedDate
                   statusCheckRollup { state }
                 }
               }
@@ -65,6 +69,20 @@ query($org: String!, $cursor: String) {
   }
 }
 """
+
+
+def fetch_viewer_login(token: str) -> str:
+    headers = {
+        "Authorization": f"bearer {token}",
+        "Content-Type": "application/json",
+    }
+    resp = requests.post(
+        GITHUB_GRAPHQL_URL,
+        json={"query": VIEWER_QUERY},
+        headers=headers,
+    )
+    resp.raise_for_status()
+    return resp.json()["data"]["viewer"]["login"]
 
 
 def fetch_open_prs(token: str, org: str) -> list[dict]:
@@ -96,6 +114,15 @@ def fetch_open_prs(token: str, org: str) -> list[dict]:
                 commits = pr.get("commits", {}).get("nodes", [])
                 last_commit = commits[0]["commit"] if commits else {}
                 rollup = last_commit.get("statusCheckRollup") or {}
+                requested_reviewers = [
+                    node["requestedReviewer"]["login"]
+                    for node in pr.get("reviewRequests", {}).get("nodes", [])
+                    if node.get("requestedReviewer") and node["requestedReviewer"].get("login")
+                ]
+                reviews = [
+                    {"author": (r.get("author") or {}).get("login", "ghost"), "created_at": r["createdAt"]}
+                    for r in pr.get("reviews", {}).get("nodes", [])
+                ]
                 all_prs.append(
                     {
                         "repo": repo["name"],
@@ -111,6 +138,9 @@ def fetch_open_prs(token: str, org: str) -> list[dict]:
                         ],
                         "comment_count": pr["comments"]["totalCount"],
                         "review_count": pr["reviews"]["totalCount"],
+                        "requested_reviewers": requested_reviewers,
+                        "reviews": reviews,
+                        "last_commit_date": last_commit.get("committedDate"),
                         "ci_state": rollup.get("state"),
                     }
                 )
@@ -215,6 +245,22 @@ _SVG_PR = (
 )
 
 
+def _needs_attention(pr: dict, viewer: str) -> bool:
+    # Rule 1: viewer is a pending requested reviewer
+    if viewer in pr["requested_reviewers"]:
+        return True
+    # Rule 2: no reviews from anyone
+    if pr["review_count"] == 0:
+        return True
+    # Rule 3: new commits since viewer's last review
+    my_reviews = [r for r in pr["reviews"] if r["author"] == viewer]
+    if my_reviews:
+        last_review = max(r["created_at"] for r in my_reviews)
+        if pr["last_commit_date"] and pr["last_commit_date"] > last_review:
+            return True
+    return False
+
+
 def render_html(prs: list[dict], org: str) -> str:
     rows = ""
     for pr in prs:
@@ -240,7 +286,8 @@ def render_html(prs: list[dict], org: str) -> str:
             counters.append(cmt)
         counters_html = f'<div class="flex items-center gap-3">{" ".join(counters)}</div>' if counters else ""
 
-        rows += f"""      <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50">
+        attention_cls = "border-l-4 border-l-blue-500" if pr.get("needs_attention") else "border-l-4 border-l-transparent"
+        rows += f"""      <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 {attention_cls}">
         <div class="{pr_color} mt-0.5">{_SVG_PR}</div>
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-x-1">
@@ -312,6 +359,11 @@ def main() -> None:
 
     prs = fetch_open_prs(token, org)
     prs = [pr for pr in prs if pr["repo"] not in ignore]
+
+    viewer = fetch_viewer_login(token)
+    for pr in prs:
+        pr["needs_attention"] = _needs_attention(pr, viewer)
+    prs.sort(key=lambda pr: (not pr["needs_attention"], pr["created_at"]))
 
     if output == "html":
         filename = f"{org}_open_prs.html"
