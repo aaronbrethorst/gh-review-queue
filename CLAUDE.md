@@ -8,17 +8,26 @@ A collection of standalone Python scripts for GitHub organization management tas
 
 ## Running Scripts
 
-Scripts are executed directly via `uv run`:
+Scripts are executed directly via `uv run` or the shebang (`./script.py`). Each script declares its own dependencies in a PEP 723 `/// script` block at the top of the file. uv resolves and installs them automatically on first run.
+
+### gh_open_prs.py
+
+Lists all open pull requests for a GitHub organization.
 
 ```
-GITHUB_TOKEN=ghp_xxx uv run gh_open_prs.py <org>
+./gh_open_prs.py OneBusAway
+./gh_open_prs.py --config settings.json
+./gh_open_prs.py --config settings.json --output html
+./gh_open_prs.py OneBusAway --ignore "repo-a, repo-b"
 ```
 
-Each script declares its own dependencies in a PEP 723 `/// script` block at the top of the file. uv resolves and installs them automatically on first run.
+- `--config <file>` — JSON config file with keys: `org`, `output`, `ignore` (array of repo names)
+- `--output html` — Generate a Tailwind-styled HTML report (`<org>_open_prs.html`)
+- `--ignore <list>` — Comma-separated repo names to exclude
+- CLI args override values from the config file
 
 ## Conventions
 
 - Python 3.12+ required
-- Scripts use `#!/usr/bin/env -S uv --quiet run --script` shebang so they can also be run directly (`./script.py`)
-- `GITHUB_TOKEN` environment variable provides GitHub API authentication
+- `GITHUB_TOKEN` is read from the environment or a `.env` file (via python-dotenv)
 - GitHub API access uses GraphQL (`https://api.github.com/graphql`)
