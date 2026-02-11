@@ -23,8 +23,10 @@ import html
 import json
 import os
 import sys
+import tempfile
 import webbrowser
 from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
 import requests
@@ -389,12 +391,11 @@ def main() -> None:
     open_browser = not args.no_open and config.get("open", True)
 
     if output == "html":
-        filename = f"{org}_review_queue.html"
-        with open(filename, "w") as f:
-            f.write(render_html(prs, org))
-        print(f"Wrote {filename}")
+        filepath = Path(tempfile.gettempdir()) / f"{org}_review_queue.html"
+        filepath.write_text(render_html(prs, org))
+        print(filepath)
         if open_browser:
-            webbrowser.open(f"file://{os.path.abspath(filename)}")
+            webbrowser.open(filepath.as_uri())
     else:
         print_table(prs)
 
