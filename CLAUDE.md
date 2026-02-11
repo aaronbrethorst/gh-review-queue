@@ -21,9 +21,10 @@ Lists all open pull requests for a GitHub organization.
 ./gh_review_queue.py OneBusAway --ignore "repo-a, repo-b"
 ```
 
-- `--config <file>` — JSON config file with keys: `org`, `output`, `ignore` (array of repo names)
+- `--config <file>` — JSON config file with keys: `org`, `output`, `ignore` (array of repo names), `open` (bool)
 - `--output html` — Generate a Tailwind-styled HTML report (`<org>_review_queue.html`)
 - `--ignore <list>` — Comma-separated repo names to exclude
+- `--open` — Open the HTML report in the default browser
 - CLI args override values from the config file
 
 ## Conventions

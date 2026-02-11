@@ -23,6 +23,7 @@ import html
 import json
 import os
 import sys
+import webbrowser
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -358,6 +359,7 @@ def main() -> None:
     parser.add_argument("--config", help="Path to JSON config file")
     parser.add_argument("--output", choices=["html"], help="Output format (default: table)")
     parser.add_argument("--ignore", help="Comma-separated list of repo names to ignore")
+    parser.add_argument("--no-open", action="store_true", help="Don't open HTML report in default browser")
     args = parser.parse_args()
 
     # Load config file as defaults, CLI args override
@@ -384,11 +386,15 @@ def main() -> None:
         pr["needs_attention"] = _needs_attention(pr, viewer)
     prs.sort(key=lambda pr: (not pr["needs_attention"], pr["created_at"]))
 
+    open_browser = not args.no_open and config.get("open", True)
+
     if output == "html":
         filename = f"{org}_review_queue.html"
         with open(filename, "w") as f:
             f.write(render_html(prs, org))
         print(f"Wrote {filename}")
+        if open_browser:
+            webbrowser.open(f"file://{os.path.abspath(filename)}")
     else:
         print_table(prs)
 

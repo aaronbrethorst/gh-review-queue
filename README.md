@@ -41,9 +41,10 @@ Lists all open pull requests for a GitHub organization, highlighting the PRs tha
 | Flag | Description |
 |------|-------------|
 | `org` | GitHub organization name (positional) |
-| `--config <file>` | JSON config file (keys: `org`, `output`, `ignore`) |
+| `--config <file>` | JSON config file (keys: `org`, `output`, `ignore`, `open`) |
 | `--output html` | Generate a Tailwind-styled HTML report (`<org>_review_queue.html`) |
 | `--ignore <list>` | Comma-separated repo names to exclude |
+| `--open` | Open the HTML report in the default browser |
 
 CLI arguments override config file values.
 
@@ -53,7 +54,8 @@ CLI arguments override config file values.
 {
   "org": "MyOrg",
   "output": "html",
-  "ignore": ["repo-a", "repo-b"]
+  "ignore": ["repo-a", "repo-b"],
+  "open": true
 }
 ```
 
