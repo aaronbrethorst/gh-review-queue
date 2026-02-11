@@ -1,4 +1,4 @@
-# gh_tasks
+# About
 
 Standalone Python script for GitHub organization management. The script is a self-contained [uv inline script](https://docs.astral.sh/uv/guides/scripts/#declaring-script-dependencies) with embedded dependencies — no virtual environment or `requirements.txt` needed.
 
