@@ -104,6 +104,14 @@ def fetch_open_prs(token: str, org: str) -> list[dict]:
             json={"query": QUERY, "variables": variables},
             headers=headers,
         )
+        if resp.status_code >= 500:
+            print(
+                f"GitHub API error: {resp.status_code} {resp.reason}\n"
+                f"URL: {GITHUB_GRAPHQL_URL}\n"
+                "GitHub may be experiencing an outage. Check https://www.githubstatus.com for details.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         resp.raise_for_status()
         data = resp.json()
 
