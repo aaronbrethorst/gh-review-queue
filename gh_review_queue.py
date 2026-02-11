@@ -307,36 +307,46 @@ def _needs_attention(pr: dict, viewer: str) -> bool:
 
 
 def render_html(prs: list[dict], org: str) -> str:
-    rows = ""
+    # Group PRs by repo, sorted alphabetically
+    grouped: dict[str, list[dict]] = {}
     for pr in prs:
-        repo = html.escape(pr["repo"])
-        title = html.escape(pr["title"])
-        url = html.escape(pr["url"])
-        author = html.escape(pr["author"])
-        number = pr["number"]
-        ago = _time_ago(pr["created_at"])
-        ci = _ci_icon(pr["ci_state"])
-        pr_color = "text-gray-500" if pr["is_draft"] else "text-green-600"
+        grouped.setdefault(pr["repo"], []).append(pr)
 
-        labels_html = "".join(_label_badge(l["name"], l["color"]) for l in pr["labels"])
-        if labels_html:
-            labels_html = f'<div class="mt-1">{labels_html}</div>'
+    rows = ""
+    for repo_name in sorted(grouped, key=str.casefold):
+        repo = html.escape(repo_name)
+        repo_url = f"https://github.com/{html.escape(org)}/{repo}"
+        rows += f"""      <div class="sticky top-0 flex items-center bg-gray-50/90 px-4 py-3 text-sm font-semibold text-gray-900 ring-1 ring-gray-900/10 backdrop-blur-sm dark:bg-gray-700/90 dark:text-gray-200 dark:ring-black/10">
+        <a href="{repo_url}" class="hover:text-blue-600">{repo}</a>
+      </div>
+"""
+        for pr in grouped[repo_name]:
+            title = html.escape(pr["title"])
+            url = html.escape(pr["url"])
+            author = html.escape(pr["author"])
+            number = pr["number"]
+            ago = _time_ago(pr["created_at"])
+            ci = _ci_icon(pr["ci_state"])
+            pr_color = "text-gray-500" if pr["is_draft"] else "text-green-600"
 
-        counters = []
-        rev = _count_badge(pr["review_count"], _SVG_REVIEW, "Reviews")
-        cmt = _count_badge(pr["comment_count"], _SVG_COMMENT, "Comments")
-        if rev:
-            counters.append(rev)
-        if cmt:
-            counters.append(cmt)
-        counters_html = f'<div class="flex items-center gap-3">{" ".join(counters)}</div>' if counters else ""
+            labels_html = "".join(_label_badge(l["name"], l["color"]) for l in pr["labels"])
+            if labels_html:
+                labels_html = f'<div class="mt-1">{labels_html}</div>'
 
-        attention_cls = "border-l-4 border-l-blue-500" if pr.get("needs_attention") else "border-l-4 border-l-transparent"
-        rows += f"""      <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 {attention_cls}" data-pr-url="{url}">
+            counters = []
+            rev = _count_badge(pr["review_count"], _SVG_REVIEW, "Reviews")
+            cmt = _count_badge(pr["comment_count"], _SVG_COMMENT, "Comments")
+            if rev:
+                counters.append(rev)
+            if cmt:
+                counters.append(cmt)
+            counters_html = f'<div class="flex items-center gap-3">{" ".join(counters)}</div>' if counters else ""
+
+            attention_cls = "border-l-4 border-l-blue-500" if pr.get("needs_attention") else "border-l-4 border-l-transparent"
+            rows += f"""      <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 {attention_cls}" data-pr-url="{url}">
         <div class="{pr_color} mt-0.5">{_SVG_PR}</div>
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-x-1">
-            <a href="https://github.com/{html.escape(org)}/{repo}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">{html.escape(org)}/{repo}</a>
             <a href="{url}" class="text-base font-semibold text-gray-900 hover:text-blue-600">{title}</a>
             {ci}
           </div>
