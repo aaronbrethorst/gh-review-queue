@@ -240,11 +240,11 @@ def _time_ago(iso_ts: str) -> str:
 
 def _ci_icon(state: str | None) -> str:
     if state == "SUCCESS":
-        return '<span class="text-green-600" title="Checks passing">&#10003;</span>'
+        return '<span class="text-green-600 dark:text-green-400" title="Checks passing">&#10003;</span>'
     if state in ("FAILURE", "ERROR"):
-        return '<span class="text-red-600" title="Checks failing">&#10007;</span>'
+        return '<span class="text-red-600 dark:text-red-400" title="Checks failing">&#10007;</span>'
     if state == "PENDING":
-        return '<span class="text-yellow-500" title="Checks pending">&#9679;</span>'
+        return '<span class="text-yellow-500 dark:text-yellow-400" title="Checks pending">&#9679;</span>'
     return ""
 
 
@@ -263,7 +263,7 @@ def _count_badge(count: int, icon_svg: str, title: str) -> str:
     if count == 0:
         return ""
     return (
-        f'<span class="inline-flex items-center gap-1 text-xs text-gray-500" title="{title}">'
+        f'<span class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400" title="{title}">'
         f'{icon_svg} {count}</span>'
     )
 
@@ -317,7 +317,7 @@ def render_html(prs: list[dict], org: str) -> str:
         repo = html.escape(repo_name)
         repo_url = f"https://github.com/{html.escape(org)}/{repo}"
         rows += f"""      <div class="sticky top-0 flex items-center bg-gray-50/90 px-4 py-3 text-sm font-semibold text-gray-900 ring-1 ring-gray-900/10 backdrop-blur-sm dark:bg-gray-700/90 dark:text-gray-200 dark:ring-black/10">
-        <a href="{repo_url}" class="hover:text-blue-600">{repo}</a>
+        <a href="{repo_url}" class="hover:text-blue-600 dark:hover:text-blue-400">{repo}</a>
       </div>
 """
         for pr in grouped[repo_name]:
@@ -327,7 +327,7 @@ def render_html(prs: list[dict], org: str) -> str:
             number = pr["number"]
             ago = _time_ago(pr["created_at"])
             ci = _ci_icon(pr["ci_state"])
-            pr_color = "text-gray-500" if pr["is_draft"] else "text-green-600"
+            pr_color = "text-gray-500 dark:text-gray-400" if pr["is_draft"] else "text-green-600 dark:text-green-400"
 
             labels_html = "".join(_label_badge(l["name"], l["color"]) for l in pr["labels"])
             if labels_html:
@@ -343,15 +343,15 @@ def render_html(prs: list[dict], org: str) -> str:
             counters_html = f'<div class="flex items-center gap-3">{" ".join(counters)}</div>' if counters else ""
 
             attention_cls = "border-l-4 border-l-blue-500" if pr.get("needs_attention") else "border-l-4 border-l-transparent"
-            rows += f"""      <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 {attention_cls}" data-pr-url="{url}">
+            rows += f"""      <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 dark:border-b-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 {attention_cls}" data-pr-url="{url}">
         <div class="{pr_color} mt-0.5">{_SVG_PR}</div>
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-x-1">
-            <a href="{url}" class="text-base font-semibold text-gray-900 hover:text-blue-600">{title}</a>
+            <a href="{url}" class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">{title}</a>
             {ci}
           </div>
           {labels_html}
-          <div class="text-xs text-gray-500 mt-0.5">#{number} opened {ago} by {author}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">#{number} opened {ago} by {author}</div>
         </div>
         {counters_html}
       </div>
@@ -359,7 +359,7 @@ def render_html(prs: list[dict], org: str) -> str:
 
     empty_msg = ""
     if not prs:
-        empty_msg = '<p class="text-gray-500 mt-4">No open pull requests found.</p>'
+        empty_msg = '<p class="text-gray-500 dark:text-gray-400 mt-4">No open pull requests found.</p>'
 
     return f"""<!doctype html>
 <html>
@@ -369,28 +369,25 @@ def render_html(prs: list[dict], org: str) -> str:
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <title>Open PRs – {html.escape(org)}</title>
   </head>
-  <body class="bg-gray-50 p-8">
+  <body class="bg-gray-50 dark:bg-gray-900 p-8">
     <div class="max-w-5xl mx-auto">
-      <h1 class="text-3xl font-bold mb-1">{html.escape(org)}</h1>
-      <p class="text-gray-500 mb-6">{len(prs)} open pull request{"" if len(prs) == 1 else "s"}</p>
+      <h1 class="text-3xl font-bold mb-1 dark:text-gray-100">{html.escape(org)}</h1>
+      <p class="text-gray-500 dark:text-gray-400 mb-6">{len(prs)} open pull request{"" if len(prs) == 1 else "s"}</p>
       {empty_msg}
-      <div class="bg-white rounded-lg shadow border border-gray-200">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
 {rows}      </div>
     </div>
     <script>
-      const KEY = "seen_prs";
-      const seen = new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+      const seen = new Set();
       function markSeen(row) {{
         row.classList.remove("border-l-blue-500");
         row.classList.add("border-l-transparent");
       }}
       document.querySelectorAll(".pr-row").forEach(row => {{
         const url = row.dataset.prUrl;
-        if (seen.has(url)) markSeen(row);
         row.querySelectorAll("a").forEach(a => {{
           a.addEventListener("click", () => {{
             seen.add(url);
-            localStorage.setItem(KEY, JSON.stringify([...seen]));
             markSeen(row);
           }});
         }});
