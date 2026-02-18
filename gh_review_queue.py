@@ -312,13 +312,23 @@ def render_html(prs: list[dict], org: str) -> str:
     for pr in prs:
         grouped.setdefault(pr["repo"], []).append(pr)
 
+    _SVG_CHEVRON = (
+        '<svg class="repo-chevron w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">'
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>'
+        '</svg>'
+    )
+
     rows = ""
     for repo_name in sorted(grouped, key=str.casefold):
         repo = html.escape(repo_name)
         repo_url = f"https://github.com/{html.escape(org)}/{repo}"
-        rows += f"""      <div class="sticky top-0 flex items-center bg-gray-50/90 px-4 py-3 text-sm font-semibold text-gray-900 ring-1 ring-gray-900/10 backdrop-blur-sm dark:bg-gray-700/90 dark:text-gray-200 dark:ring-black/10">
-        <a href="{repo_url}" class="hover:text-blue-600 dark:hover:text-blue-400">{repo}</a>
+        pr_count = len(grouped[repo_name])
+        rows += f"""      <div class="repo-header sticky top-0 flex items-center bg-gray-50/90 px-4 py-3 text-sm font-semibold text-gray-900 ring-1 ring-gray-900/10 backdrop-blur-sm dark:bg-gray-700/90 dark:text-gray-200 dark:ring-black/10 cursor-pointer select-none" role="button" aria-expanded="true">
+        {_SVG_CHEVRON}
+        <a href="{repo_url}" class="hover:text-blue-600 dark:hover:text-blue-400 ml-2">{repo}</a>
+        <span class="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">{pr_count}</span>
       </div>
+      <div class="repo-prs">
 """
         for pr in grouped[repo_name]:
             title = html.escape(pr["title"])
@@ -343,19 +353,20 @@ def render_html(prs: list[dict], org: str) -> str:
             counters_html = f'<div class="flex items-center gap-3">{" ".join(counters)}</div>' if counters else ""
 
             attention_cls = "border-l-4 border-l-blue-500" if pr.get("needs_attention") else "border-l-4 border-l-transparent"
-            rows += f"""      <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 dark:border-b-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 {attention_cls}" data-pr-url="{url}">
-        <div class="{pr_color} mt-0.5">{_SVG_PR}</div>
-        <div class="flex-1 min-w-0">
-          <div class="flex flex-wrap items-center gap-x-1">
-            <a href="{url}" class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">{title}</a>
-            {ci}
+            rows += f"""        <div class="pr-row flex items-start gap-3 px-4 py-3 border-b border-gray-200 dark:border-b-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 {attention_cls}" data-pr-url="{url}">
+          <div class="{pr_color} mt-0.5">{_SVG_PR}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-x-1">
+              <a href="{url}" class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">{title}</a>
+              {ci}
+            </div>
+            {labels_html}
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">#{number} opened {ago} by {author}</div>
           </div>
-          {labels_html}
-          <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">#{number} opened {ago} by {author}</div>
+          {counters_html}
         </div>
-        {counters_html}
-      </div>
 """
+        rows += "      </div>\n"
 
     empty_msg = ""
     if not prs:
@@ -390,6 +401,17 @@ def render_html(prs: list[dict], org: str) -> str:
             seen.add(url);
             markSeen(row);
           }});
+        }});
+      }});
+      document.querySelectorAll(".repo-header").forEach(header => {{
+        const prs = header.nextElementSibling;
+        const chevron = header.querySelector(".repo-chevron");
+        header.addEventListener("click", (e) => {{
+          if (e.target.closest("a")) return;
+          const collapsed = prs.style.display === "none";
+          prs.style.display = collapsed ? "" : "none";
+          chevron.style.transform = collapsed ? "" : "rotate(-90deg)";
+          header.setAttribute("aria-expanded", collapsed);
         }});
       }});
     </script>
