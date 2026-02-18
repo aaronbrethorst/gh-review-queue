@@ -108,16 +108,32 @@ query($org: String!, $cursor: String) {
 """
 
 
+def _graphql_post(headers: dict, payload: dict) -> requests.Response:
+    """POST to the GitHub GraphQL API with retry on server errors."""
+    max_retries = 5
+    for attempt in range(max_retries + 1):
+        resp = requests.post(GITHUB_GRAPHQL_URL, json=payload, headers=headers)
+        if resp.status_code < 500:
+            return resp
+        if attempt < max_retries:
+            delay = 2 ** attempt
+            print(
+                f"\r\033[2K  GitHub API error: {resp.status_code} {resp.reason} — retrying in {delay}s "
+                f"(attempt {attempt + 1}/{max_retries})…",
+                end="",
+                flush=True,
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+    return resp  # final failed response
+
+
 def fetch_viewer_login(token: str) -> str:
     headers = {
         "Authorization": f"bearer {token}",
         "Content-Type": "application/json",
     }
-    resp = requests.post(
-        GITHUB_GRAPHQL_URL,
-        json={"query": VIEWER_QUERY},
-        headers=headers,
-    )
+    resp = _graphql_post(headers, {"query": VIEWER_QUERY})
     resp.raise_for_status()
     return resp.json()["data"]["viewer"]["login"]
 
@@ -133,14 +149,10 @@ def fetch_open_prs(token: str, org: str) -> list[dict]:
 
     while True:
         variables = {"org": org, "cursor": cursor}
-        resp = requests.post(
-            GITHUB_GRAPHQL_URL,
-            json={"query": QUERY, "variables": variables},
-            headers=headers,
-        )
+        resp = _graphql_post(headers, {"query": QUERY, "variables": variables})
         if resp.status_code >= 500:
             print(
-                f"GitHub API error: {resp.status_code} {resp.reason}\n"
+                f"\nGitHub API error: {resp.status_code} {resp.reason}\n"
                 f"URL: {GITHUB_GRAPHQL_URL}\n"
                 "GitHub may be experiencing an outage. Check https://www.githubstatus.com for details.",
                 file=sys.stderr,
