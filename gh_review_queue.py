@@ -72,7 +72,7 @@ VIEWER_QUERY = "{ viewer { login } }"
 QUERY = """
 query($org: String!, $cursor: String) {
   organization(login: $org) {
-    repositories(first: 100, after: $cursor, isFork: false, isArchived: false, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    repositories(first: 100, after: $cursor, isArchived: false, orderBy: {field: UPDATED_AT, direction: DESC}) {
       pageInfo {
         hasNextPage
         endCursor
